@@ -37,16 +37,18 @@
             const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjdGplZmpnb2FpbnV5Y25zaHNyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5OTAzNzksImV4cCI6MjA5NTU2NjM3OX0.NnD2QxJjr7-zMkGFDpDl_bgiMzZm4A0jzEqDMQ8QbVA';
 
 
-        
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         // Create supabase client (only once)
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+       // const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
 
-            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+            const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+            // then later:
+            // const { data, error } = await supabase.auth.signInWithPassword({ email, password });
             if (error) {
                 document.getElementById('errorMsg').innerText = error.message;
                 return;
