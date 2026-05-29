@@ -13,24 +13,25 @@
         <button id="logoutBtn" class="bg-red-500 text-white px-4 py-2 rounded-lg">Logout</button>
     </nav>
     <div class="container mx-auto p-6">
-        <!-- Class Management Section -->
+        <!-- Class Management -->
         <div class="bg-white rounded-lg shadow p-6 mb-8">
             <h2 class="text-2xl font-bold mb-4">📚 Manage Classes & Admission Status</h2>
-            <div id="classesList" class="overflow-x-auto">
-                <!-- Table of classes will load here -->
-            </div>
+            <div id="classesList" class="overflow-x-auto"></div>
         </div>
 
-        <!-- Add Student Section -->
+        <!-- Add Student -->
         <div class="bg-white rounded-lg shadow p-6 mb-8">
             <h2 class="text-2xl font-bold mb-4">➕ Add New Student</h2>
+            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-3 mb-4 text-sm">
+                <strong>Important:</strong> Before adding a student, make sure the parent email exists in <strong>Supabase Auth → Users</strong>. Create the parent user there first (with a temporary password). Then use that email here.
+            </div>
             <form id="addStudentForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <input type="text" id="studentName" placeholder="Full Name" class="border p-2 rounded" required>
                 <input type="date" id="dob" required>
                 <select id="classSelect" required class="border p-2 rounded">
                     <option value="">-- Select Class --</option>
                 </select>
-                <input type="email" id="parentEmail" placeholder="Parent Email (used for login)" class="border p-2 rounded" required>
+                <input type="email" id="parentEmail" placeholder="Parent Email (must exist in Auth)" class="border p-2 rounded" required>
                 <input type="text" id="parentPhone" placeholder="Parent Phone" class="border p-2 rounded">
                 <button type="submit" class="bg-green-600 text-white p-2 rounded hover:bg-green-700">Add Student</button>
             </form>
@@ -45,9 +46,10 @@
     </div>
 
     <script>
+        const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co';
+        const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // Helper: check if user is admin
         async function checkAdmin() {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) window.location.href = 'index.html';
@@ -56,10 +58,8 @@
         }
         checkAdmin();
 
-        // Load classes and display toggle buttons
         async function loadClasses() {
-            const { data: classes, error } = await supabase.from('classes').select('*').order('sort_order');
-            if (error) return;
+            const { data: classes } = await supabase.from('classes').select('*').order('sort_order');
             let html = '<table class="min-w-full border"><thead><tr class="bg-gray-200"><th>Class</th><th>Level</th><th>Capacity</th><th>Enrolled</th><th>Admissions Open</th><th>Action</th></tr></thead><tbody>';
             for (let cls of classes) {
                 html += `<tr class="border-b"><td class="p-2">${cls.name} ${cls.section ? '('+cls.section+')' : ''}</td><td>${cls.level}</td><td>${cls.capacity}</td><td>${cls.current_enrollment}</td><td class="font-bold ${cls.admissions_open ? 'text-green-600' : 'text-red-600'}">${cls.admissions_open ? 'Open' : 'Closed'}</td>
@@ -72,10 +72,9 @@
         window.toggleAdmission = async (classId, newStatus) => {
             await supabase.from('classes').update({ admissions_open: newStatus }).eq('id', classId);
             loadClasses();
-            loadClassSelect(); // refresh dropdown
+            loadClassSelect();
         };
 
-        // Populate class dropdown (only open for admissions)
         async function loadClassSelect() {
             const { data: classes } = await supabase.from('classes').select('id, name, section, admissions_open').eq('admissions_open', true).order('sort_order');
             const select = document.getElementById('classSelect');
@@ -85,18 +84,16 @@
             });
         }
 
-        // Load student list
         async function loadStudents() {
-            const { data: students, error } = await supabase.from('students').select('*, classes(name)');
+            const { data: students } = await supabase.from('students').select('*, classes(name)');
             let html = '<table class="min-w-full border"><thead><tr class="bg-gray-200"><th>Name</th><th>Class</th><th>Parent Email</th><th>DOB</th><th>Status</th></tr></thead><tbody>';
             students.forEach(s => {
                 html += `<tr><td class="p-2">${s.name}</td><td>${s.classes?.name || '-'}</td><td>${s.parent_email}</td><td>${s.date_of_birth}</td><td>${s.status}</td></tr>`;
             });
-            html += '</tbody></table>';
+            html += '</tbody>树';
             document.getElementById('studentsList').innerHTML = html;
         }
 
-        // Age calculation helper
         function calculateAgeInMonths(dob) {
             const today = new Date();
             const birth = new Date(dob);
@@ -106,7 +103,6 @@
             return months;
         }
 
-        // Add student with age validation
         document.getElementById('addStudentForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const name = document.getElementById('studentName').value;
@@ -116,36 +112,24 @@
             const parentPhone = document.getElementById('parentPhone').value;
 
             if (!classId) {
-                document.getElementById('addMsg').innerHTML = '<span class="text-red-600">Please select a class.</span>';
+                document.getElementById('addMsg').innerHTML = '<span class="text-red-600">Select a class.</span>';
                 return;
             }
 
-            // Get class age requirements
+            // Age validation
             const { data: classData } = await supabase.from('classes').select('min_age_months, max_age_months, name').eq('id', classId).single();
             const ageMonths = calculateAgeInMonths(dob);
             if (ageMonths < classData.min_age_months) {
-                document.getElementById('addMsg').innerHTML = `<span class="text-red-600">Student is too young for ${classData.name}. Minimum age: ${Math.round(classData.min_age_months/12)} years.</span>`;
+                document.getElementById('addMsg').innerHTML = `<span class="text-red-600">Too young for ${classData.name}. Minimum ${Math.round(classData.min_age_months/12)} years.</span>`;
                 return;
             }
             if (ageMonths > classData.max_age_months) {
-                document.getElementById('addMsg').innerHTML = `<span class="text-red-600">Student is above maximum age for ${classData.name}.</span>`;
+                document.getElementById('addMsg').innerHTML = `<span class="text-red-600">Too old for ${classData.name}.</span>`;
                 return;
             }
 
-            // 1. Create a user in Supabase Auth for the parent (so they can login)
-            const tempPassword = Math.random().toString(36).slice(-8); // generate random password
-            const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
-                email: parentEmail,
-                password: tempPassword,
-                email_confirm: true
-            });
-            if (authError) {
-                // If user already exists, we can still add student
-                console.log('User may exist, continuing...');
-            }
-            const parentUserId = authUser?.user?.id || null;
-
-            // 2. Insert student record
+            // Check if parent email exists in Auth? We trust admin has created the user.
+            // Insert student
             const { error: insertError } = await supabase.from('students').insert({
                 name: name,
                 date_of_birth: dob,
@@ -160,27 +144,21 @@
                 return;
             }
 
-            // 3. Optionally assign role 'parent' to that user
-            if (parentUserId) {
-                await supabase.from('user_roles').insert({ user_id: parentUserId, role: 'parent' });
-            }
-
-            document.getElementById('addMsg').innerHTML = `<span class="text-green-600">✅ Student added! Parent can login with email and temp password: ${tempPassword} (please note down).</span>`;
+            // Optionally add parent role if not exists (we assume admin already assigned role via SQL)
+            document.getElementById('addMsg').innerHTML = `<span class="text-green-600">✅ Student added successfully! Parent can login using their email.</span>`;
             document.getElementById('addStudentForm').reset();
             loadStudents();
-            loadClassSelect(); // update enrollment count? (we can update later)
+            loadClassSelect();
         });
 
-        // Logout
         document.getElementById('logoutBtn').addEventListener('click', async () => {
             await supabase.auth.signOut();
             window.location.href = 'index.html';
         });
 
-        // Initial load
         loadClasses();
         loadClassSelect();
         loadStudents();
     </script>
 </body>
-</html>iews 
+</html>
