@@ -31,44 +31,35 @@
         </div>
     </div>
     <script>
-        // ========== SUPABASE CONFIG (REPLACE WITH YOUR ACTUAL KEYS) ==========
-        
-            const SUPABASE_URL = 'https://lctjefjgoainuycnshsr.supabase.co';
-            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjdGplZmpnb2FpbnV5Y25zaHNyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5OTAzNzksImV4cCI6MjA5NTU2NjM3OX0.NnD2QxJjr7-zMkGFDpDl_bgiMzZm4A0jzEqDMQ8QbVA';
+    const SUPABASE_URL = 'https://lctjefjgoainuycnshsr.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjdGplZmpnb2FpbnV5Y25zaHNyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5OTAzNzksImV4cCI6MjA5NTU2NjM3OX0.NnD2QxJjr7-zMkGFDpDl_bgiMzZm4A0jzEqDMQ8QbVA';
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
 
-        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        // Create supabase client (only once)
-       // const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-
-            const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-            // then later:
-            // const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-            if (error) {
-                document.getElementById('errorMsg').innerText = error.message;
-                return;
-            }
-            // Get user role from user_roles table
-            const { data: roleData, error: roleError } = await supabase
-                .from('user_roles')
-                .select('role')
-                .eq('user_id', data.user.id)
-                .maybeSingle();
-            if (roleError || !roleData) {
-                document.getElementById('errorMsg').innerText = 'Role not assigned. Contact admin.';
-                return;
-            }
-            const role = roleData.role;
-            if (role === 'admin') window.location.href = 'admin.html';
-            else if (role === 'teacher') window.location.href = 'teacher.html';
-            else if (role === 'parent') window.location.href = 'student.html';
-            else window.location.href = 'index.html';
-        });
-    </script>
+        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (error) {
+            document.getElementById('errorMsg').innerText = error.message;
+            return;
+        }
+        const { data: roleData, error: roleError } = await supabaseClient
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', data.user.id)
+            .maybeSingle();
+        if (roleError || !roleData) {
+            document.getElementById('errorMsg').innerText = 'Role not assigned. Contact admin.';
+            return;
+        }
+        const role = roleData.role;
+        if (role === 'admin') window.location.href = 'admin.html';
+        else if (role === 'teacher') window.location.href = 'teacher.html';
+        else if (role === 'parent') window.location.href = 'student.html';
+        else window.location.href = 'index.html';
+    });
+</script>
 </body>
 </html>
