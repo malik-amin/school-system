@@ -31,9 +31,14 @@
         </div>
     </div>
     <script>
-        // ========== SUPABASE CONFIG ==========
-        const SUPABASE_URL = 'https://lctjefjgoainuycnshsr.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjdGplZmpnb2FpbnV5Y25zaHNyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5OTAzNzksImV4cCI6MjA5NTU2NjM3OX0.NnD2QxJjr7-zMkGFDpDl_bgiMzZm4A0jzEqDMQ8QbVA';
+        // ========== SUPABASE CONFIG (REPLACE WITH YOUR ACTUAL KEYS) ==========
+        
+            const SUPABASE_URL = 'https://lctjefjgoainuycnshsr.supabase.co';
+            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjdGplZmpnb2FpbnV5Y25zaHNyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5OTAzNzksImV4cCI6MjA5NTU2NjM3OX0.NnD2QxJjr7-zMkGFDpDl_bgiMzZm4A0jzEqDMQ8QbVA';
+
+
+        
+        // Create supabase client (only once)
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
