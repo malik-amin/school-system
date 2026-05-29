@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher | Sana School</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-100">
+    <nav class="bg-white shadow p-4 flex justify-between items-center">
+        <h1 class="text-xl font-bold text-blue-800">Teacher Portal</h1>
+        <button id="logoutBtn" class="bg-red-500 text-white px-4 py-2 rounded-lg">Logout</button>
+    </nav>
+    <div class="container mx-auto p-6">
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-2xl font-bold mb-4">📝 Enter Marks</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block font-bold mb-1">Select Class</label>
+                    <select id="classSelect" class="w-full border p-2 rounded">
+                        <option value="">-- Choose Class --</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-bold mb-1">Select Student</label>
+                    <select id="studentSelect" class="w-full border p-2 rounded" disabled>
+                        <option value="">First select a class</option>
+                    </select>
+                </div>
+            </div>
+            <div id="marksForm" style="display:none;" class="mt-4 space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div><label class="block font-bold">English (0-100)</label><input type="number" id="eng" class="border p-2 rounded w-full" min="0" max="100"></div>
+                    <div><label class="block font-bold">Mathematics (0-100)</label><input type="number" id="math" class="border p-2 rounded w-full" min="0" max="100"></div>
+                    <div><label class="block font-bold">Science (0-100)</label><input type="number" id="science" class="border p-2 rounded w-full" min="0" max="100"></div>
+                </div>
+                <button id="saveMarksBtn" class="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700">Save Result</button>
+            </div>
+            <div id="resultMsg" class="mt-4"></div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co';
+        const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let currentTeacherId = null;
+        let assignedClasses = [];
+        let studentsList = [];
+
+        // Verify teacher role
+        async function checkTeacher() {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) window.location.href = 'index.html';
+            currentTeacherId = user.id;
+            const { data } = await supabase.from('user_roles').select('role').eq('user_id', user.id).single();
+            if (data?.role !== 'teacher') window.location.href = 'index.html';
+        }
+        checkTeacher();
+
+        // Load classes assigned to this teacher
+        async function loadAssignedClasses() {
+            const { data, error } = await supabase
+                .from('teacher_classes')
+                .select('class_id, classes(id, name, section)')
+                .eq('teacher_id', currentTeacherId);
+            if (error) return;
+            const classSelect = document.getElementById('classSelect');
+            classSelect.innerHTML = '<option value="">-- Choose Class --</option>';
+            assignedClasses = data;
+            data.forEach(tc => {
+                const cls = tc.classes;
+                classSelect.innerHTML += `<option value="${cls.id}">${cls.name} ${cls.section ? '('+cls.section+')' : ''}</option>`;
+            });
+        }
+
+        // When class changes, load students of that class
+        document.getElementById('classSelect').addEventListener('change', async (e) => {
+            const classId = e.target.value;
+            if (!classId) {
+                document.getElementById('studentSelect').innerHTML = '<option value="">First select a class</option>';
+                document.getElementById('studentSelect').disabled = true;
+                document.getElementById('marksForm').style.display = 'none';
+                return;
+            }
+            // Fetch students
+            const { data, error } = await supabase
+                .from('students')
+                .select('id, name, roll_number')
+                .eq('class_id', classId)
+                .eq('status', 'Active');
+            if (error) return;
+            studentsList = data;
+            const studentSelect = document.getElementById('studentSelect');
+            studentSelect.disabled = false;
+            studentSelect.innerHTML = '<option value="">-- Select Student --</option>';
+            data.forEach(s => {
+                studentSelect.innerHTML += `<option value="${s.id}">${s.name} (${s.roll_number || 'no roll'})</option>`;
+            });
+        });
+
+        document.getElementById('studentSelect').addEventListener('change', () => {
+            if (document.getElementById('studentSelect').value) {
+                document.getElementById('marksForm').style.display = 'block';
+            } else {
+                document.getElementById('marksForm').style.display = 'none';
+            }
+        });
+
+        // Calculate grade
+        function getGrade(percentage) {
+            if (percentage >= 90) return 'A+';
+            if (percentage >= 75) return 'A';
+            if (percentage >= 60) return 'B';
+            if (percentage >= 45) return 'C';
+            return 'F';
+        }
+
+        document.getElementById('saveMarksBtn').addEventListener('click', async () => {
+            const studentId = document.getElementById('studentSelect').value;
+            if (!studentId) return;
+            const eng = parseInt(document.getElementById('eng').value);
+            const math = parseInt(document.getElementById('math').value);
+            const science = parseInt(document.getElementById('science').value);
+            if (isNaN(eng) || isNaN(math) || isNaN(science)) {
+                document.getElementById('resultMsg').innerHTML = '<span class="text-red-600">Fill all marks (0-100).</span>';
+                return;
+            }
+            const total = eng + math + science;
+            const percentage = (total / 300) * 100;
+            const grade = getGrade(percentage);
+            const academicYear = new Date().getFullYear(); // you can make it dynamic, e.g., 2025-26 as 2026
+            // Insert result (assuming only one result per student per year/term; we'll do simple insert)
+            const { error } = await supabase.from('results').insert({
+                student_id: studentId,
+                subject_id: null, // we are not using subject table here for simplicity; you can map to actual subject ids
+                marks_obtained: percentage, // store percentage
+                grade: grade,
+                percentage: percentage,
+                academic_year: academicYear,
+                term: 2, // e.g., second term
+                entered_by: currentTeacherId
+            });
+            if (error) {
+                document.getElementById('resultMsg').innerHTML = `<span class="text-red-600">Error: ${error.message}</span>`;
+            } else {
+                document.getElementById('resultMsg').innerHTML = `<span class="text-green-600">✅ Result saved! Percentage: ${percentage.toFixed(2)}%, Grade: ${grade}</span>`;
+                document.getElementById('eng').value = '';
+                document.getElementById('math').value = '';
+                document.getElementById('science').value = '';
+            }
+        });
+
+        document.getElementById('logoutBtn').addEventListener('click', async () => {
+            await supabase.auth.signOut();
+            window.location.href = 'index.html';
+        });
+
+        loadAssignedClasses();
+    </script>
+</body>
+</html>
