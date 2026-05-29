@@ -26,13 +26,14 @@
         </form>
         <div id="errorMsg" class="text-red-500 text-sm mt-4 text-center"></div>
         <div class="mt-6 text-center text-xs text-gray-400">
-            Demo: admin@sana.edu / admin123 &nbsp;|&nbsp; teacher@sana.edu / teacher123
+            <p>Demo: admin@sana.edu / admin123 &nbsp;|&nbsp; teacher@sana.edu / teacher123</p>
+            <p class="mt-1"><a href="admissions.html" class="text-blue-600 hover:underline">📢 Check Admission Availability</a></p>
         </div>
     </div>
     <script>
-        // Initialize Supabase
-        const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co';  // Replace with your URL
-        const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';                   // Replace with your key
+        // ========== SUPABASE CONFIG ==========
+        const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co';
+        const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
@@ -45,14 +46,14 @@
                 document.getElementById('errorMsg').innerText = error.message;
                 return;
             }
-            // After login, get user role from user_roles table
+            // Get user role from user_roles table
             const { data: roleData, error: roleError } = await supabase
                 .from('user_roles')
                 .select('role')
                 .eq('user_id', data.user.id)
-                .single();
-            if (roleError) {
-                document.getElementById('errorMsg').innerText = 'Role not found. Contact admin.';
+                .maybeSingle();
+            if (roleError || !roleData) {
+                document.getElementById('errorMsg').innerText = 'Role not assigned. Contact admin.';
                 return;
             }
             const role = roleData.role;
