@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admissions | Sana School</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        .status-open { color: #16a34a; font-weight: bold; }
+        .status-limited { color: #eab308; font-weight: bold; }
+        .status-closed { color: #dc2626; font-weight: bold; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="container mx-auto p-6">
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-blue-800">🏫 Sana School</h1>
+            <p class="text-gray-600">Admission Open for Academic Year 2025-2026</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+            <table class="min-w-full">
+                <thead class="bg-blue-800 text-white">
+                    <tr>
+                        <th class="py-3 px-4 text-left">Class</th>
+                        <th class="py-3 px-4 text-left">Level</th>
+                        <th class="py-3 px-4 text-left">Age Requirement</th>
+                        <th class="py-3 px-4 text-left">Admission Status</th>
+                        <th class="py-3 px-4 text-left">Seats Available</th>
+                        <th class="py-3 px-4 text-left">Monthly Fee (PKR)</th>
+                    </tr>
+                </thead>
+                <tbody id="admissionsTable">
+                    <tr><td colspan="6" class="text-center py-4">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="mt-8 text-center">
+            <a href="index.html" class="text-blue-600 hover:underline">← Back to Login</a>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co';
+        const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        async function loadAdmissions() {
+            const { data: classes, error } = await supabase
+                .from('classes')
+                .select('*')
+                .order('sort_order', { ascending: true });
+            if (error) {
+                document.getElementById('admissionsTable').innerHTML = '<tr><td colspan="6" class="text-red-500">Error loading data</td></tr>';
+                return;
+            }
+            let html = '';
+            for (let cls of classes) {
+                let statusClass = '', statusText = '';
+                if (cls.admissions_open) {
+                    if (cls.current_enrollment >= cls.capacity) {
+                        statusClass = 'status-closed';
+                        statusText = 'Closed';
+                    } else if (cls.capacity - cls.current_enrollment <= 5) {
+                        statusClass = 'status-limited';
+                        statusText = 'Limited Seats';
+                    } else {
+                        statusClass = 'status-open';
+                        statusText = 'Open';
+                    }
+                } else {
+                    statusClass = 'status-closed';
+                    statusText = 'Closed';
+                }
+                const seatsLeft = cls.capacity - cls.current_enrollment;
+                const ageRange = `${Math.round(cls.min_age_months/12)} - ${Math.round(cls.max_age_months/12)} years`;
+                html += `<tr class="border-b hover:bg-gray-50">
+                    <td class="py-3 px-4 font-semibold">${cls.name} ${cls.section ? '('+cls.section+')' : ''}</td>
+                    <td class="py-3 px-4">${cls.level}</td>
+                    <td class="py-3 px-4">${ageRange}</td>
+                    <td class="py-3 px-4"><span class="${statusClass}">${statusText}</span></td>
+                    <td class="py-3 px-4">${seatsLeft > 0 ? seatsLeft : 0} / ${cls.capacity}</td>
+                    <td class="py-3 px-4">PKR ${cls.monthly_fee.toLocaleString()}</td>
+                </tr>`;
+            }
+            document.getElementById('admissionsTable').innerHTML = html;
+        }
+        loadAdmissions();
+    </script>
+</body>
+</html>
